@@ -74,6 +74,7 @@ type Table struct {
 	autoMergeCells bool
 	hdrLine        bool
 	borders        Border
+	borderMargin   bool
 	colSize        int
 	headerParams   []string
 	columnsParams  []string
@@ -110,6 +111,7 @@ func NewWriter(writer io.Writer) *Table {
 		rowLine:       false,
 		hdrLine:       true,
 		borders:       Border{Left: true, Right: true, Bottom: true, Top: true},
+		borderMargin:  true,
 		colSize:       -1,
 		headerParams:  []string{},
 		columnsParams: []string{},
@@ -270,6 +272,12 @@ func (t *Table) SetBorder(border bool) {
 	t.SetBorders(Border{border, border, border, border})
 }
 
+// Set Border Margin
+// This sets whether or not a margin is printed if the border is disabled
+func (t *Table) SetBorderMargin(borderMargin bool) {
+	t.borderMargin = borderMargin
+}
+
 func (t *Table) SetBorders(border Border) {
 	t.borders = border
 }
@@ -398,7 +406,9 @@ func (t *Table) printHeading() {
 	for x := 0; x < max; x++ {
 		// Check if border is set
 		// Replace with space if not set
-		fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
+		if t.borders.Left || t.borderMargin {
+			fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
+		}
 
 		for y := 0; y <= end; y++ {
 			v := t.cs[y]
@@ -409,7 +419,10 @@ func (t *Table) printHeading() {
 			if t.autoFmt {
 				h = Title(h)
 			}
-			pad := ConditionString((y == end && !t.borders.Left), SPACE, t.pColumn)
+			var pad string
+			if t.borders.Left || t.borderMargin {
+				pad = ConditionString((y == end && !t.borders.Left), SPACE, t.pColumn)
+			}
 
 			if is_esc_seq {
 				fmt.Fprintf(t.out, " %s %s",
@@ -627,9 +640,13 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 		for y := 0; y < total; y++ {
 
 			// Check if border is set
-			fmt.Fprint(t.out, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
+			if t.borders.Left || t.borderMargin {
+				fmt.Fprint(t.out, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
+			}
 
-			fmt.Fprintf(t.out, SPACE)
+			if t.borderMargin {
+				fmt.Fprintf(t.out, SPACE)
+			}
 			str := columns[y][x]
 
 			// Embedding escape sequence with column value
@@ -665,7 +682,9 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 		}
 		// Check if border is set
 		// Replace with space if not set
-		fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
+		if t.borders.Left || t.borderMargin {
+			fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
+		}
 		fmt.Fprint(t.out, t.newLine)
 	}
 
